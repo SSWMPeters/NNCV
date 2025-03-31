@@ -120,11 +120,22 @@ class Attention(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-
-        #TODO: complete the forward pass
-        # q, k, v = 
+        q, k, v = qkv[0], qkv[1], qkv[2]  # Separate q, k, v
         
-        return x, attn
+        # Compute scaled dot-product attention
+        scores = torch.matmul(q, k.transpose(-2, -1)) * self.scale
+        attention_weights = F.softmax(scores, dim=-1)
+        attention_weights = self.attn_drop(attention_weights)
+
+        # Apply attention weights to values
+        hidden_states = torch.matmul(attention_weights, v)
+
+        # Reshape back to (B, N, C)
+        hidden_states = hidden_states.transpose(1, 2).reshape(B, N, C)
+        hidden_states = self.proj(hidden_states)
+        hidden_states = self.proj_drop(hidden_states)
+
+        return hidden_states, attention_weights
 
 
 class Block(nn.Module):
@@ -204,7 +215,7 @@ class PatchEmbed(nn.Module):
         B, C, H, W = x.shape
         
         # TODO: Complete the forward pass
-        # x =
+        x = self.proj(x).flatten(2).transpose(1, 2)
 
         return x
 
@@ -267,6 +278,7 @@ class VisionTransformer(nn.Module):
             scale_factor=(w0 / math.sqrt(N), h0 / math.sqrt(N)),
             mode='bicubic',
         )
+        print(patch_pos_embed.shape[-1], patch_pos_embed.shape[-2], int(w0), int(h0))
         assert int(w0) == patch_pos_embed.shape[-2] and int(h0) == patch_pos_embed.shape[-1]
         patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
         return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1)
