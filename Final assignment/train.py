@@ -29,7 +29,7 @@ from torchvision.transforms.v2 import (
     ToImage,
     ToDtype,
 )
-from torchvision.models import vit_h_14
+from torchvision.models import vit_b_16
 
 from model import ViTSegmentation
 
@@ -65,7 +65,7 @@ def get_args_parser():
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--experiment-id", type=str, default="unet-training", help="Experiment ID for Weights & Biases")
+    parser.add_argument("--experiment-id", type=str, default="vit-training", help="Experiment ID for Weights & Biases")
 
     return parser
 
@@ -131,7 +131,7 @@ def main(args):
         num_workers=args.num_workers
     )
     
-    vit_model = vit_h_14(weights='DEFAULT').to(device)
+    vit_model = vit_b_16(weights='DEFAULT').to(device)
 
     model = ViTSegmentation(
         vit_model=vit_model, 
@@ -240,6 +240,9 @@ def main(args):
 
 
 if __name__ == "__main__":
+    print("Training complete!")
     parser = get_args_parser()
     args = parser.parse_args()
     main(args)
+
+
