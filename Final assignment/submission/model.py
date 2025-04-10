@@ -11,7 +11,7 @@ class Model(nn.Module):
     Olaf Ronneberger et al. (2015), "U-Net: Convolutional Networks for Biomedical Image Segmentation"
     https://arxiv.org/pdf/1505.04597.pdf
     """
-    def __init__(self, in_channels=3, n_classes=1):
+    def __init__(self, in_channels=3, n_classes=19):
         
         super(Model, self).__init__()
 
