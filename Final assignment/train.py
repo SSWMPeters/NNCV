@@ -29,7 +29,7 @@ from torchvision.transforms.v2 import (
     ToImage,
     ToDtype,
 )
-from torchvision.models import vit_b_16
+from torchvision import models
 
 from model import ViTSegmentation
 
@@ -94,7 +94,7 @@ def main(args):
     # Define the transforms to apply to the data
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((224, 224)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
@@ -131,7 +131,7 @@ def main(args):
         num_workers=args.num_workers
     )
     
-    vit_model = vit_b_16(weights='DEFAULT').to(device)
+    vit_model = models.vit_b_16(pretrained=True)
 
     model = ViTSegmentation(
         vit_model=vit_model, 
