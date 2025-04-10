@@ -29,8 +29,9 @@ from torchvision.transforms.v2 import (
     ToImage,
     ToDtype,
 )
+from torchvision.models import vit_h_14
 
-from model import Model
+from model import ViTSegmentation
 
 
 # Mapping class IDs to train IDs
@@ -129,12 +130,18 @@ def main(args):
         shuffle=False,
         num_workers=args.num_workers
     )
+    
+    vit_model = vit_h_14(weights='DEFAULT').to(device)
 
-    # Define the model
-    model = Model(
-        in_channels=3,  # RGB images
-        n_classes=19,  # 19 classes in the Cityscapes dataset
+    model = ViTSegmentation(
+        vit_model=vit_model, 
+        num_classes=19,
     ).to(device)
+    # Define the model
+    # model = Model(
+    #     in_channels=3,  # RGB images
+    #     n_classes=19,  # 19 classes in the Cityscapes dataset
+    # ).to(device)
 
     # Define the loss function
     criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
