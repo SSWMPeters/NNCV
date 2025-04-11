@@ -92,11 +92,15 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Define the transforms to apply to the data
+    # transform = Compose([
+    #     ToImage(),
+    #     Resize((224, 224)),
+    #     ToDtype(torch.float32, scale=True),
+    #     Normalize((0.5,), (0.5,)),
+    # ])
     transform = Compose([
         ToImage(),
-        Resize((224, 224)),
-        ToDtype(torch.float32, scale=True),
-        Normalize((0.5,), (0.5,)),
+        models.ViT_B_16_Weights.DEFAULT.transforms(),
     ])
 
     # Load the dataset and make a split for training and validation
@@ -240,7 +244,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    print("Training complete!")
+    print("Training start")
     parser = get_args_parser()
     args = parser.parse_args()
     main(args)
