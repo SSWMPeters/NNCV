@@ -34,7 +34,7 @@ from torchvision.transforms.v2 import (
 )
 from torchvision import models
 
-from model import ViTSegmentation, CityscapesViT
+from model_vit import Model
 
 
 # Mapping class IDs to train IDs
@@ -149,7 +149,7 @@ def main(args):
     # Load pretrained ViT model
     vit_model = models.vit_b_16(pretrained=True)
 
-    model = ViTSegmentation(
+    model = Model(
         vit_model=vit_model, 
         num_classes=19,
     ).to(device)
