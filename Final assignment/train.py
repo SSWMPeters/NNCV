@@ -188,8 +188,8 @@ def main(args):
             loss.backward()
             optimizer.step()
 
-            dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
-            print(f"Dice training Score: {dice:.4f}")
+            # dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
+            # print(f"Dice training Score: {dice:.4f}")
 
             wandb.log({
                 "train_loss": loss.item(),
@@ -213,8 +213,8 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
-                dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
-                dices = dices.append(dice.item())
+                # dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
+                # dices = dices.append(dice.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -239,7 +239,7 @@ def main(args):
             valid_loss = sum(losses) / len(losses)
             print(f"Validation Loss: {valid_loss:.4f}")
 
-            print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
+            # print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
             wandb.log({
                 "valid_loss": valid_loss
             }, step=(epoch + 1) * len(train_dataloader) - 1)
