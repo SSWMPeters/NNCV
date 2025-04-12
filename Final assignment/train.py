@@ -95,27 +95,14 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Define the transforms to apply to the data
+    # Original:
     # transform = Compose([
     #     ToImage(),
     #     Resize((224, 224)),
     #     ToDtype(torch.float32, scale=True),
     #     Normalize((0.5,), (0.5,)),
     # ])
-    # train_dataset = CityscapesViT(
-    #     args.data_dir,
-    #     split="train",
-    #     mode="fine",
-    #     target_type="semantic",
-    #     transforms=transform
-    # )
 
-    # train_dataset = CityscapesViT(
-    #     args.data_dir,
-    #     split="val",
-    #     mode="fine",
-    #     target_type="semantic",
-    #     transforms=transform
-    # )
     transform = Compose([            #[1]
         ToImage(),                     #[2]
         Resize((256, 256)),                    #[2]
@@ -125,13 +112,6 @@ def main(args):
         mean=[0.485, 0.456, 0.406],                #[6]
         std=[0.229, 0.224, 0.225]                  #[7]
     )])
-
-    # transform = Compose([
-    #     ToImage(),
-    #     Resize((518, 518)),  # Resize to match ViT input size
-    #     ConvertImageDtype(torch.float32),  # Convert to float32
-    #     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalization
-    # ])
 
 
     # Load the dataset and make a split for training and validation
@@ -166,13 +146,16 @@ def main(args):
         num_workers=args.num_workers
     )
     
+    # Load pretrained ViT model
     vit_model = models.vit_b_16(pretrained=True)
 
     model = ViTSegmentation(
         vit_model=vit_model, 
         num_classes=19,
     ).to(device)
+
     # Define the model
+    # Oringinal:
     # model = Model(
     #     in_channels=3,  # RGB images
     #     n_classes=19,  # 19 classes in the Cityscapes dataset
@@ -205,28 +188,33 @@ def main(args):
             loss.backward()
             optimizer.step()
 
+            dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
+            print(f"Dice training Score: {dice:.4f}")
+
             wandb.log({
                 "train_loss": loss.item(),
                 "learning_rate": optimizer.param_groups[0]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
-            
+            print(f"Training Loss: {loss.item():.4f}")
         # Validation
         model.eval()
         with torch.no_grad():
             losses = []
+            dices = []
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
                 images, labels = images.to(device), labels.to(device)
 
                 labels = labels.long().squeeze(1)  # Remove channel dimension
-                print('label', labels.shape)
 
                 outputs = model(images)
-                print('output', outputs.shape)
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
+
+                dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
+                dices = dices.append(dice.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -249,6 +237,9 @@ def main(args):
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
             
             valid_loss = sum(losses) / len(losses)
+            print(f"Validation Loss: {valid_loss:.4f}")
+
+            print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
             wandb.log({
                 "valid_loss": valid_loss
             }, step=(epoch + 1) * len(train_dataloader) - 1)
@@ -277,7 +268,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    print("Training start")
     parser = get_args_parser()
     args = parser.parse_args()
     main(args)
