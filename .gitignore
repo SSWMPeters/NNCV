@@ -26,7 +26,10 @@ share/python-wheels/
 *.egg
 MANIFEST
 /Weekly notebooks/data/
+/Final assignment/data/
 /5lsm0/
+/Final assignment/.gitattributes
+/Final assignment/wandb/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

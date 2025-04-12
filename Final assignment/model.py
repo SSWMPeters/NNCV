@@ -1,6 +1,35 @@
 import torch
 import torch.nn as nn
 
+from torchvision.datasets import Cityscapes
+from torchvision.transforms import functional as TF
+from torch.utils.data import DataLoader
+
+class CityscapesViT(torch.utils.data.Dataset):
+    def __init__(self, root, split, mode, target_type, transforms):
+        self.dataset = Cityscapes(
+            root=root,
+            split=split,
+            mode=mode,
+            target_type=target_type
+        )
+        self.transforms = transforms
+
+    def __getitem__(self, index):
+        img, mask = self.dataset[index]
+
+        # Resize both to 224x224
+        img = self.transforms(img)  # Uses the ViT transform
+
+        # Resize mask to same size (no interpolation between classes!)
+        mask = TF.resize(mask, size=[224, 224], interpolation=TF.InterpolationMode.NEAREST)
+        mask = TF.pil_to_tensor(mask).squeeze(0).long()  # convert to [H, W], class indices
+
+        return img, mask
+
+    def __len__(self):
+        return len(self.dataset)
+
 
 class Model(nn.Module):
     """ 
@@ -101,18 +130,27 @@ class ViTSegmentation(nn.Module):
     def __init__(self, vit_model, num_classes=19):
         super(ViTSegmentation, self).__init__()
         self.vit = vit_model
+        # self.decoder = nn.Sequential(
+        #     nn.ConvTranspose2d(1000, 512, kernel_size=2, stride=2), # Added transposed convolution layers
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(32, num_classes, kernel_size=2, stride=2),
+        # )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(1000, 512, kernel_size=2, stride=2), # Added transposed convolution layers
+            nn.ConvTranspose2d(1000, 512, kernel_size=2, stride=2),  # 14 → 28
             nn.ReLU(),
-            nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),   # 28 → 56
             nn.ReLU(),
-            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),   # 56 → 112
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, num_classes, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(128, num_classes, kernel_size=2, stride=2),  # 112 → 224
         )
 
     def forward(self, x):

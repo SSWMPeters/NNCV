@@ -28,10 +28,13 @@ from torchvision.transforms.v2 import (
     Resize,
     ToImage,
     ToDtype,
+    ToTensor,
+    CenterCrop,
+    ConvertImageDtype
 )
 from torchvision import models
 
-from model import ViTSegmentation
+from model import ViTSegmentation, CityscapesViT
 
 
 # Mapping class IDs to train IDs
@@ -98,10 +101,38 @@ def main(args):
     #     ToDtype(torch.float32, scale=True),
     #     Normalize((0.5,), (0.5,)),
     # ])
-    transform = Compose([
-        ToImage(),
-        models.ViT_B_16_Weights.DEFAULT.transforms(),
-    ])
+    # train_dataset = CityscapesViT(
+    #     args.data_dir,
+    #     split="train",
+    #     mode="fine",
+    #     target_type="semantic",
+    #     transforms=transform
+    # )
+
+    # train_dataset = CityscapesViT(
+    #     args.data_dir,
+    #     split="val",
+    #     mode="fine",
+    #     target_type="semantic",
+    #     transforms=transform
+    # )
+    transform = Compose([            #[1]
+        ToImage(),                     #[2]
+        Resize((256, 256)),                    #[2]
+        CenterCrop((224, 224)),                #[3]                 #[4]
+        ToDtype(torch.float32, scale=True),
+        Normalize(                      #[5]
+        mean=[0.485, 0.456, 0.406],                #[6]
+        std=[0.229, 0.224, 0.225]                  #[7]
+    )])
+
+    # transform = Compose([
+    #     ToImage(),
+    #     Resize((518, 518)),  # Resize to match ViT input size
+    #     ConvertImageDtype(torch.float32),  # Convert to float32
+    #     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalization
+    # ])
+
 
     # Load the dataset and make a split for training and validation
     train_dataset = Cityscapes(
@@ -190,8 +221,10 @@ def main(args):
                 images, labels = images.to(device), labels.to(device)
 
                 labels = labels.long().squeeze(1)  # Remove channel dimension
+                print('label', labels.shape)
 
                 outputs = model(images)
+                print('output', outputs.shape)
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
             
