@@ -217,12 +217,11 @@ def main(args):
 
             wandb.log({
                 "train_loss": loss.item(),
-                "learning_rate": scheduler.get_last_lr(),
+                "learning_rate": optimizer.param_groups[0]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
             # print(f"Training Loss: {loss.item():.4f}")
         # Validation
-        scheduler.step(loss.item())
         model.eval()
         with torch.no_grad():
             losses = []
@@ -262,10 +261,12 @@ def main(args):
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
             
             valid_loss = sum(losses) / len(losses)
+            scheduler.step(valid_loss)
+
             print(f"Validation Loss: {valid_loss:.4f}")
             valid_loss_dice = sum(dices) / len(dices)
             print(f"Validation dice Loss: {valid_loss_dice:.4f}")
-            print(f"Learning rate: {scheduler.get_last_lr():.4f}")
+            print(f"Learning rate: {optimizer.param_groups[0]['lr']:.4f}")
 
             # print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
             wandb.log({
