@@ -19,6 +19,7 @@ import wandb
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
@@ -185,6 +186,9 @@ def main(args):
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
 
+    scheduler = ReduceLROnPlateau(optimizer, patience=3)
+
+
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None
@@ -205,18 +209,20 @@ def main(args):
             loss = criterion(outputs, labels)
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
-            optimizer.step()
+            optimizer.step(loss)
 
             # dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
             # print(f"Dice training Score: {dice:.4f}")
+            # "learning_rate": optimizer.param_groups[0]['lr'],
 
             wandb.log({
                 "train_loss": loss.item(),
-                "learning_rate": optimizer.param_groups[0]['lr'],
+                "learning_rate": scheduler.get_last_lr(),
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
             # print(f"Training Loss: {loss.item():.4f}")
         # Validation
+        scheduler.step(loss.item())
         model.eval()
         with torch.no_grad():
             losses = []
@@ -259,6 +265,7 @@ def main(args):
             print(f"Validation Loss: {valid_loss:.4f}")
             valid_loss_dice = sum(dices) / len(dices)
             print(f"Validation dice Loss: {valid_loss_dice:.4f}")
+            print(f"Learning rate: {scheduler.get_last_lr():.4f}")
 
             # print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
             wandb.log({
