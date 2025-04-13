@@ -1,5 +1,4 @@
 import torch
-from einops import rearrange
 from torch import nn
 from torchvision.ops import StochasticDepth
 from typing import List
@@ -7,13 +6,22 @@ from typing import Iterable
 import torch.nn.functional as F
 
 
+# class LayerNorm2d(nn.LayerNorm):
+#     def forward(self, x):
+#         x = rearrange(x, "b c h w -> b h w c")
+#         x = super().forward(x)
+#         x = rearrange(x, "b h w c -> b c h w")
+#         return x
+
 class LayerNorm2d(nn.LayerNorm):
     def forward(self, x):
-        x = rearrange(x, "b c h w -> b h w c")
+        # [B, C, H, W] -> [B, H, W, C]
+        x = x.permute(0, 2, 3, 1)
         x = super().forward(x)
-        x = rearrange(x, "b h w c -> b c h w")
+        # [B, H, W, C] -> [B, C, H, W]
+        x = x.permute(0, 3, 1, 2)
         return x
-    
+
 
 class OverlapPatchMerging(nn.Sequential):
     def __init__(
@@ -43,6 +51,7 @@ class OverlapPatchMerging(nn.Sequential):
 # half_r = r // 2
 # x = rearrange(x, "b (h w) c -> b c h w", h=h//half_r) # shape = [1, 8, 32, 32]
 
+
 class EfficientMultiHeadAttention(nn.Module):
     def __init__(self, channels: int, reduction_ratio: int = 1, num_heads: int = 8):
         super().__init__()
@@ -57,15 +66,39 @@ class EfficientMultiHeadAttention(nn.Module):
         )
 
     def forward(self, x):
-        _, _, h, w = x.shape
+        B, C, H, W = x.shape
         reduced_x = self.reducer(x)
-        # attention needs tensor of shape (batch, sequence_length, channels)
-        reduced_x = rearrange(reduced_x, "b c h w -> b (h w) c")
-        x = rearrange(x, "b c h w -> b (h w) c")
+        # [B, C, H, W] -> [B, H*W, C]
+        reduced_x = reduced_x.permute(0, 2, 3, 1).reshape(B, -1, C)
+        x = x.permute(0, 2, 3, 1).reshape(B, -1, C)
         out = self.att(x, reduced_x, reduced_x)[0]
-        # reshape it back to (batch, channels, height, width)
-        out = rearrange(out, "b (h w) c -> b c h w", h=h, w=w)
+        out = out.reshape(B, H, W, C).permute(0, 3, 1, 2)  # [B, C, H, W]
         return out
+
+
+# class EfficientMultiHeadAttention(nn.Module):
+#     def __init__(self, channels: int, reduction_ratio: int = 1, num_heads: int = 8):
+#         super().__init__()
+#         self.reducer = nn.Sequential(
+#             nn.Conv2d(
+#                 channels, channels, kernel_size=reduction_ratio, stride=reduction_ratio
+#             ),
+#             LayerNorm2d(channels),
+#         )
+#         self.att = nn.MultiheadAttention(
+#             channels, num_heads=num_heads, batch_first=True
+#         )
+
+#     def forward(self, x):
+#         _, _, h, w = x.shape
+#         reduced_x = self.reducer(x)
+#         # attention needs tensor of shape (batch, sequence_length, channels)
+#         reduced_x = rearrange(reduced_x, "b c h w -> b (h w) c")
+#         x = rearrange(x, "b c h w -> b (h w) c")
+#         out = self.att(x, reduced_x, reduced_x)[0]
+#         # reshape it back to (batch, channels, height, width)
+#         out = rearrange(out, "b (h w) c -> b c h w", h=h, w=w)
+#         return out
     
 # x = torch.randn((1, channels, 64, 64))
 # block = EfficientMultiHeadAttention(channels, reduction_ratio=r)
