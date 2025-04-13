@@ -169,7 +169,7 @@ def main(args):
         "drop_prob": 0.1                          # Stochastic depth drop probability
     }
 
-    model = SegFormer(**segformer_b5_config)
+    model = SegFormer(**segformer_b5_config).to(device)
 
     # model = SegFormer(
     #     in_channels=3,
