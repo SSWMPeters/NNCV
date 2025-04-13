@@ -147,10 +147,9 @@ def main(args):
     )
     
     # Load pretrained ViT model
-    vit_model = models.vit_b_16(pretrained=True)
+    # vit_model = models.vit_b_16(pretrained=True)
 
-    model = Model(
-        vit_model=vit_model, 
+    model = Model( 
         num_classes=19,
     ).to(device)
 
