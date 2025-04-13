@@ -36,7 +36,7 @@ from torchvision import models
 
 from model_vit import Model
 
-from dice import DiceLoss
+from MLCDiceLoss import MultiClassDiceLoss
 
 
 # Mapping class IDs to train IDs
@@ -164,7 +164,7 @@ def main(args):
 
     # Define the loss function
     criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    dice_loss = DiceLoss(mode="multiclass")
+    dice_loss = MultiClassDiceLoss()
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
