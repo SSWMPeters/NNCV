@@ -36,6 +36,8 @@ from torchvision import models
 
 from model_vit import Model
 
+from model_segformer import SegFormer
+
 from MLCDiceLoss import MultiClassDiceLoss
 
 
@@ -98,22 +100,22 @@ def main(args):
 
     # Define the transforms to apply to the data
     # Original:
-    # transform = Compose([
-    #     ToImage(),
-    #     Resize((224, 224)),
-    #     ToDtype(torch.float32, scale=True),
-    #     Normalize((0.5,), (0.5,)),
-    # ])
-
-    transform = Compose([            #[1]
-        ToImage(),                     #[2]
-        Resize((256, 256)),                    #[2]
-        CenterCrop((224, 224)),                #[3]                 #[4]
+    transform = Compose([
+        ToImage(),
+        Resize((224, 224)),
         ToDtype(torch.float32, scale=True),
-        Normalize(                      #[5]
-        mean=[0.485, 0.456, 0.406],                #[6]
-        std=[0.229, 0.224, 0.225]                  #[7]
-    )])
+        Normalize((0.5,), (0.5,)),
+    ])
+
+    # transform = Compose([            #[1]
+    #     ToImage(),                     #[2]
+    #     Resize((256, 256)),                    #[2]
+    #     CenterCrop((224, 224)),                #[3]                 #[4]
+    #     ToDtype(torch.float32, scale=True),
+    #     Normalize(                      #[5]
+    #     mean=[0.485, 0.456, 0.406],                #[6]
+    #     std=[0.229, 0.224, 0.225]                  #[7]
+    # )])
 
 
     # Load the dataset and make a split for training and validation
@@ -151,9 +153,23 @@ def main(args):
     # Load pretrained ViT model
     # vit_model = models.vit_b_16(pretrained=True)
 
-    model = Model( 
+    model = SegFormer(
+        in_channels=3,
+        widths=[64, 128, 256, 512],
+        depths=[3, 4, 6, 3],
+        all_num_heads=[1, 2, 4, 8],
+        patch_sizes=[7, 3, 3, 3],
+        overlap_sizes=[4, 2, 2, 2],
+        reduction_ratios=[8, 4, 2, 1],
+        mlp_expansions=[4, 4, 4, 4],
+        decoder_channels=256,
+        scale_factors=[8, 4, 2, 1],
         num_classes=19,
-    ).to(device)
+    )
+
+    # model = Model( 
+    #     num_classes=19,
+    # ).to(device)
 
     # Define the model
     # Oringinal:
