@@ -1,14 +1,28 @@
 import numpy as np
 from torchvision import transforms
 import torch
+from torchvision.models import ViT_B_16_Weights
 
 def preprocess(img):
     """preproces image:
     input is a PIL image.
     Output image should be pytorch tensor that is compatible with your model"""
 
-    img = transforms.functional.resize(img, size=(512, 512), interpolation=transforms.InterpolationMode.LANCZOS)
-    trans = transforms.Compose([transforms.ToTensor()])
+    # weights = ViT_B_16_Weights.DEFAULT
+    # trans = weights.transforms()
+
+    # img = transforms.functional.resize(img, size=(512, 512), interpolation=transforms.InterpolationMode.LANCZOS)
+    # trans = transforms.Compose([transforms.ToTensor()])
+    
+    trans = transforms.Compose([            #[1]
+        transforms.ToImage(),                     #[2]
+        transforms.Resize((256, 256)),                    #[2]
+        transforms.CenterCrop((224, 224)),                #[3]                 #[4]
+        transforms.ToDtype(torch.float32, scale=True),
+        transforms.Normalize(                      #[5]
+        mean=[0.485, 0.456, 0.406],                #[6]
+        std=[0.229, 0.224, 0.225]                  #[7]
+    )])
     img = trans(img)
     img = img.unsqueeze(0)
 
