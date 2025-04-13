@@ -13,7 +13,10 @@ class MultiClassDiceLoss(nn.Module):
         inputs: [B, C, H, W] - raw logits
         targets: [B, H, W] - class indices (0 to C-1)
         """
-
+        if self.ignore_index is not None:
+            targets = targets.clone()
+            targets[targets == self.ignore_index] = 0
+        
         # Apply softmax to get class probabilities
         inputs = F.softmax(inputs, dim=1)
 
@@ -31,10 +34,10 @@ class MultiClassDiceLoss(nn.Module):
         dice = (2 * intersection + self.smooth) / (union + self.smooth)
 
         # Optional: mask out ignore_index class
-        if self.ignore_index is not None:
-            mask = torch.ones(num_classes, dtype=torch.bool)
-            mask[self.ignore_index] = False
-            dice = dice[:, mask]
+        # if self.ignore_index is not None:
+        #     mask = torch.ones(num_classes, dtype=torch.bool)
+        #     mask[self.ignore_index] = False
+        #     dice = dice[:, mask]
 
         # Return average Dice loss over classes and batch
         return 1 - dice.mean()
