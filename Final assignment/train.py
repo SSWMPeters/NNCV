@@ -19,7 +19,7 @@ import wandb
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
@@ -70,7 +70,7 @@ def get_args_parser():
     parser.add_argument("--data-dir", type=str, default="./data/cityscapes", help="Path to the training data")
     parser.add_argument("--batch-size", type=int, default=64, help="Training batch size")
     parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--experiment-id", type=str, default="vit-training", help="Experiment ID for Weights & Biases")
@@ -154,19 +154,36 @@ def main(args):
     # Load pretrained ViT model
     # vit_model = models.vit_b_16(pretrained=True)
 
-    model = SegFormer(
-        in_channels=3,
-        widths=[64, 128, 256, 512],
-        depths=[3, 4, 6, 3],
-        all_num_heads=[1, 2, 4, 8],
-        patch_sizes=[7, 3, 3, 3],
-        overlap_sizes=[4, 2, 2, 2],
-        reduction_ratios=[8, 4, 2, 1],
-        mlp_expansions=[4, 4, 4, 4],
-        decoder_channels=256,
-        scale_factors=[8, 4, 2, 1],
-        num_classes=19,
-    ).to(device)
+    segformer_b5_config = {
+        "in_channels": 3,
+        "widths": [64, 128, 320, 512],             # Feature map widths for each stage
+        "depths": [3, 6, 40, 3],                   # Number of transformer blocks per stage
+        "all_num_heads": [1, 2, 5, 8],             # Attention heads per stage
+        "patch_sizes": [7, 3, 3, 3],               # Patch sizes for Overlap Patch Merging
+        "overlap_sizes": [4, 2, 2, 2],             # Overlap stride sizes
+        "reduction_ratios": [8, 4, 2, 1],          # Attention spatial reduction per stage
+        "mlp_expansions": [4, 4, 4, 4],            # MLP hidden expansion factor
+        "decoder_channels": 256,                  # Channels used in decoder
+        "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
+        "num_classes": 19,                        # Replace with your target number of classes
+        "drop_prob": 0.1                          # Stochastic depth drop probability
+    }
+
+    model = SegFormer(**segformer_b5_config)
+
+    # model = SegFormer(
+    #     in_channels=3,
+    #     widths=[64, 128, 256, 512],
+    #     depths=[3, 4, 6, 3],
+    #     all_num_heads=[1, 2, 4, 8],
+    #     patch_sizes=[7, 3, 3, 3],
+    #     overlap_sizes=[4, 2, 2, 2],
+    #     reduction_ratios=[8, 4, 2, 1],
+    #     mlp_expansions=[4, 4, 4, 4],
+    #     decoder_channels=256,
+    #     scale_factors=[8, 4, 2, 1],
+    #     num_classes=19,
+    # ).to(device)
 
     # model = Model( 
     #     num_classes=19,
@@ -186,7 +203,7 @@ def main(args):
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
 
-    scheduler = ReduceLROnPlateau(optimizer, patience=3)
+    scheduler = ExponentialLR(optimizer, gamma=0.9)
 
 
     # Training loop
@@ -206,7 +223,9 @@ def main(args):
 
             optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            loss_dice = dice_loss(outputs, labels)
+            loss_CE = criterion(outputs, labels)
+            loss = loss_CE
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
             optimizer.step()
@@ -225,7 +244,8 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
-            dices = []
+            losses_CE = []
+            losses_dice = []
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -234,12 +254,15 @@ def main(args):
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = model(images)
-                loss = criterion(outputs, labels)
+                loss_CE = criterion(outputs, labels)
+                losses_CE.append(loss_CE.item())
+
+                loss_dice = dice_loss(outputs, labels)  # Calculate the Dice score
+                losses_dice.append(loss_dice.item())
+
+                loss = loss_CE
                 losses.append(loss.item())
 
-                dice = dice_loss(outputs, labels)  # Calculate the Dice score
-                dices.append(dice.item())
-            
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
 
@@ -263,10 +286,11 @@ def main(args):
             valid_loss = sum(losses) / len(losses)
             scheduler.step(valid_loss)
 
-            print(f"Validation Loss: {valid_loss:.4f}")
-            valid_loss_dice = sum(dices) / len(dices)
-            print(f"Validation dice Loss: {valid_loss_dice:.4f}")
-            print(f"Learning rate: {optimizer.param_groups[0]['lr']:.4f}")
+            valid_loss_CE = sum(losses_CE) / len(losses_CE)
+            valid_loss_dice = sum(losses_dice) / len(losses_dice)
+            print(f"Validation CE Loss: {valid_loss_CE:.4f}")
+            print(f"Validation Dice Loss: {valid_loss_dice:.4f}")
+            print(f"Learning rate: {optimizer.param_groups[0]['lr']:.6f}")
 
             # print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
             wandb.log({
