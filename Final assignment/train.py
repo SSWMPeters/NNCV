@@ -209,7 +209,7 @@ def main(args):
             loss = criterion(outputs, labels)
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
-            optimizer.step(loss)
+            optimizer.step()
 
             # dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
             # print(f"Dice training Score: {dice:.4f}")
