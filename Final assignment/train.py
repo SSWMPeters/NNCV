@@ -165,7 +165,7 @@ def main(args):
         decoder_channels=256,
         scale_factors=[8, 4, 2, 1],
         num_classes=19,
-    )
+    ).to(device)
 
     # model = Model( 
     #     num_classes=19,
