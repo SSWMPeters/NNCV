@@ -36,6 +36,8 @@ from torchvision import models
 
 from model_vit import Model
 
+from dice import DiceLoss
+
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -162,6 +164,7 @@ def main(args):
 
     # Define the loss function
     criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
+    dice_loss = DiceLoss(mode="multiclass")
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
@@ -184,6 +187,7 @@ def main(args):
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
+            # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
             optimizer.step()
 
@@ -195,7 +199,7 @@ def main(args):
                 "learning_rate": optimizer.param_groups[0]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
-            print(f"Training Loss: {loss.item():.4f}")
+            # print(f"Training Loss: {loss.item():.4f}")
         # Validation
         model.eval()
         with torch.no_grad():
@@ -212,8 +216,8 @@ def main(args):
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
 
-                # dice = nn.dice_score(outputs, labels)  # Calculate the Dice score
-                # dices = dices.append(dice.item())
+                dice = dice_loss(outputs, labels)  # Calculate the Dice score
+                dices.append(dice.item())
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -237,6 +241,8 @@ def main(args):
             
             valid_loss = sum(losses) / len(losses)
             print(f"Validation Loss: {valid_loss:.4f}")
+            valid_loss_dice = sum(dices) / len(dices)
+            print(f"Validation dice Loss: {valid_loss_dice:.4f}")
 
             # print(f"Dice validation Score: {sum(dices) / len(dices):.4f}")
             wandb.log({
