@@ -19,7 +19,7 @@ import wandb
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
@@ -40,7 +40,6 @@ from model_vit import Model
 from model_segformer import SegFormer
 
 from MLCDiceLoss import MultiClassDiceLoss
-
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -73,7 +72,7 @@ def get_args_parser():
     parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--experiment-id", type=str, default="vit-training", help="Experiment ID for Weights & Biases")
+    parser.add_argument("--experiment-id", type=str, default="segformer_train", help="Experiment ID for Weights & Biases")
 
     return parser
 
@@ -103,7 +102,7 @@ def main(args):
     # Original:
     transform = Compose([
         ToImage(),
-        Resize((224, 224)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
@@ -163,7 +162,7 @@ def main(args):
         "overlap_sizes": [4, 2, 2, 2],             # Overlap stride sizes
         "reduction_ratios": [8, 4, 2, 1],          # Attention spatial reduction per stage
         "mlp_expansions": [4, 4, 4, 4],            # MLP hidden expansion factor
-        "decoder_channels": 256,                  # Channels used in decoder
+        "decoder_channels": 768,                  # Channels used in decoder
         "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
         "num_classes": 19,                        # Replace with your target number of classes
         "drop_prob": 0.1                          # Stochastic depth drop probability
@@ -203,7 +202,7 @@ def main(args):
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
 
-    scheduler = ExponentialLR(optimizer, gamma=0.9)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
 
 
     # Training loop
@@ -225,7 +224,7 @@ def main(args):
             outputs = model(images)
             loss_dice = dice_loss(outputs, labels)
             loss_CE = criterion(outputs, labels)
-            loss = loss_CE
+            loss = loss_CE + loss_dice
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
             optimizer.step()
@@ -260,7 +259,7 @@ def main(args):
                 loss_dice = dice_loss(outputs, labels)  # Calculate the Dice score
                 losses_dice.append(loss_dice.item())
 
-                loss = loss_CE
+                loss = loss_CE + loss_dice
                 losses.append(loss.item())
 
                 if i == 0:

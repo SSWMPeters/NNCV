@@ -266,6 +266,6 @@ class SegFormer(nn.Module):
         features = self.encoder(x)
         features = self.decoder(features[::-1])
         segmentation = self.head(features)
-        return F.interpolate(segmentation, size=(224, 224), mode='bilinear', align_corners=False)
+        return F.interpolate(segmentation, size=(512, 512), mode='bilinear', align_corners=False)
     
 
