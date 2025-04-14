@@ -269,3 +269,5 @@ class SegFormer(nn.Module):
         return F.interpolate(segmentation, size=(256, 256), mode='bilinear', align_corners=False)
     
 
+    
+

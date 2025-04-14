@@ -19,7 +19,7 @@ import wandb
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
@@ -67,7 +67,7 @@ def get_args_parser():
 
     parser = ArgumentParser("Training script for a PyTorch U-Net model")
     parser.add_argument("--data-dir", type=str, default="./data/cityscapes", help="Path to the training data")
-    parser.add_argument("--batch-size", type=int, default=64, help="Training batch size")
+    parser.add_argument("--batch-size", type=int, default=32, help="Training batch size")
     parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
     parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
@@ -202,7 +202,7 @@ def main(args):
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
 
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.6, patience=5)
 
 
     # Training loop
