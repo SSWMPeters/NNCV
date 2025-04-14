@@ -34,7 +34,7 @@ from torchvision.transforms.v2 import (
     ConvertImageDtype
 )
 from torchvision import models
-
+from model_segformer_ood import SegFormerWithEnergy
 from model_vit import Model
 
 from model_segformer import SegFormer
@@ -165,10 +165,11 @@ def main(args):
         "decoder_channels": 768,                  # Channels used in decoder
         "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
         "num_classes": 19,                        # Replace with your target number of classes
-        "drop_prob": 0.1                          # Stochastic depth drop probability
+        "drop_prob": 0.1,                          # Stochastic depth drop probability
+        "threshold": -6.0,                      # Threshold for the score
     }
 
-    model = SegFormer(**segformer_b5_config).to(device)
+    model = SegFormerWithEnergy(**segformer_b5_config).to(device)
 
     # model = SegFormer(
     #     in_channels=3,
@@ -213,6 +214,7 @@ def main(args):
 
         # Training
         model.train()
+        train_energy = []
         for i, (images, labels) in enumerate(train_dataloader):
 
             labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -221,10 +223,15 @@ def main(args):
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
-            outputs = model(images)
+            outputs, flag, score = model(images)
+            print('outputs', outputs, type(outputs))
+            print('flag', flag, type(flag)) 
+            print('score', score, type(score))
             loss_dice = dice_loss(outputs, labels)
             loss_CE = criterion(outputs, labels)
             loss = loss_CE + loss_dice
+
+            train_energy.append(torch.mean(score))
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
             optimizer.step()
@@ -238,13 +245,15 @@ def main(args):
                 "learning_rate": optimizer.param_groups[0]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
-            # print(f"Training Loss: {loss.item():.4f}")
+        train_energy_avg = sum(train_energy) / len(train_energy)
+        print(f"Training Energy: {train_energy_avg:.4f}")
         # Validation
         model.eval()
         with torch.no_grad():
             losses = []
             losses_CE = []
             losses_dice = []
+            valid_energy = []
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -252,9 +261,11 @@ def main(args):
 
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                outputs = model(images)
+                outputs, flag, score = model(images)
                 loss_CE = criterion(outputs, labels)
                 losses_CE.append(loss_CE.item())
+
+                valid_energy.append(score.item())
 
                 loss_dice = dice_loss(outputs, labels)  # Calculate the Dice score
                 losses_dice.append(loss_dice.item())
@@ -284,6 +295,9 @@ def main(args):
             
             valid_loss = sum(losses) / len(losses)
             scheduler.step(valid_loss)
+
+            valid_energy_avg = sum(valid_energy) / len(valid_energy)
+            print(f"Validation Energy: {valid_energy_avg:.4f}")
 
             valid_loss_CE = sum(losses_CE) / len(losses_CE)
             valid_loss_dice = sum(losses_dice) / len(losses_dice)

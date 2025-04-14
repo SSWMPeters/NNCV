@@ -231,18 +231,18 @@ class SegFormerSegmentationHead(nn.Module):
 class SegFormer(nn.Module):
     def __init__(
         self,
-        in_channels: int = 3,
-        widths: List[int] = [64, 128, 320, 512],
-        depths: List[int] = [3, 6, 40, 3],
-        all_num_heads: List[int] = [1, 2, 5, 8],
-        patch_sizes: List[int] = [7, 3, 3, 3],
-        overlap_sizes: List[int] = [4, 2, 2, 2],
-        reduction_ratios: List[int] = [8, 4, 2, 1],
-        mlp_expansions: List[int] = [4, 4, 4, 4],
-        decoder_channels: int = 768,
-        scale_factors: List[int] = [8, 4, 2, 1],
-        num_classes: int = 19,
-        drop_prob: float = 0.1,
+        in_channels: int,
+        widths: List[int],
+        depths: List[int],
+        all_num_heads: List[int],
+        patch_sizes: List[int],
+        overlap_sizes: List[int],
+        reduction_ratios: List[int],
+        mlp_expansions: List[int],
+        decoder_channels: int,
+        scale_factors: List[int],
+        num_classes: int,
+        drop_prob: float = 0.0,
     ):
 
         super().__init__()
@@ -268,5 +268,40 @@ class SegFormer(nn.Module):
         segmentation = self.head(features)
         return F.interpolate(segmentation, size=(256, 256), mode='bilinear', align_corners=False)
     
- 
 
+class SegFormerWithEnergy(nn.Module):
+    def __init__(self,
+                in_channels: int,
+                widths: List[int],
+                depths: List[int],
+                all_num_heads: List[int],
+                patch_sizes: List[int],
+                overlap_sizes: List[int],
+                reduction_ratios: List[int],
+                mlp_expansions: List[int],
+                decoder_channels: int,
+                scale_factors: List[int],
+                num_classes: int,
+                drop_prob: float = 0.0,
+                threshold: float = -6.0):
+        super().__init__()
+        self.segformer = SegFormer(in_channels,
+                                    widths,
+                                    depths,
+                                    all_num_heads,
+                                    patch_sizes,
+                                    overlap_sizes,
+                                    reduction_ratios,
+                                    mlp_expansions,
+                                    decoder_channels,
+                                    scale_factors,
+                                    num_classes,
+                                    drop_prob)
+        self.threshold = threshold
+
+    def forward(self, x):
+        logits = self.segformer(x)
+        energy_map = torch.logsumexp(logits, dim=1)  # [B, H, W]
+        avg_energy = energy_map.mean(dim=(1, 2))  # [B]
+        ood_flags = avg_energy > -self.threshold  # less negative = more likely OOD
+        return logits, ood_flags, avg_energy
