@@ -102,7 +102,7 @@ def main(args):
     # Original:
     transform = Compose([
         ToImage(),
-        Resize((512, 512)),
+        Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
