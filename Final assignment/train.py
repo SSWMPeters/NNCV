@@ -224,9 +224,6 @@ def main(args):
 
             optimizer.zero_grad()
             outputs, flag, score = model(images)
-            print('outputs', outputs, type(outputs))
-            print('flag', flag, type(flag)) 
-            print('score', score, type(score))
             loss_dice = dice_loss(outputs, labels)
             loss_CE = criterion(outputs, labels)
             loss = loss_CE + loss_dice
@@ -265,7 +262,7 @@ def main(args):
                 loss_CE = criterion(outputs, labels)
                 losses_CE.append(loss_CE.item())
 
-                valid_energy.append(score.item())
+                valid_energy.append(torch.mean(score))
 
                 loss_dice = dice_loss(outputs, labels)  # Calculate the Dice score
                 losses_dice.append(loss_dice.item())
