@@ -166,7 +166,7 @@ def main(args):
         "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
         "num_classes": 19,                        # Replace with your target number of classes
         "drop_prob": 0.1,                          # Stochastic depth drop probability
-        "threshold": -6.0,                      # Threshold for the score
+        "threshold": -3.0,                      # Threshold for the score
     }
 
 
