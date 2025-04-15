@@ -169,7 +169,7 @@ def main(args):
         "threshold": -6.0,                      # Threshold for the score
     }
 
-    model = SegFormerWithEnergy(**segformer_b5_config).to(device)
+    model = SegFormer(**segformer_b5_config).to(device)
 
     # model = SegFormer(
     #     in_channels=3,

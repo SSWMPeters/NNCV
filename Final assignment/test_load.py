@@ -35,5 +35,5 @@ model = SegFormer(**segformer_b5_config)
 # )
 model.load_state_dict(torch.load(PATH, map_location=torch.device('cpu')))
 model.eval()
-print(model.state_dict().keys())
+
 
