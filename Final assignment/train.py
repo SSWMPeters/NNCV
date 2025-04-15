@@ -153,6 +153,22 @@ def main(args):
     # Load pretrained ViT model
     # vit_model = models.vit_b_16(pretrained=True)
 
+    # segformer_b5_config = {
+    #     "in_channels": 3,
+    #     "widths": [64, 128, 320, 512],             # Feature map widths for each stage
+    #     "depths": [3, 6, 40, 3],                   # Number of transformer blocks per stage
+    #     "all_num_heads": [1, 2, 5, 8],             # Attention heads per stage
+    #     "patch_sizes": [7, 3, 3, 3],               # Patch sizes for Overlap Patch Merging
+    #     "overlap_sizes": [4, 2, 2, 2],             # Overlap stride sizes
+    #     "reduction_ratios": [8, 4, 2, 1],          # Attention spatial reduction per stage
+    #     "mlp_expansions": [4, 4, 4, 4],            # MLP hidden expansion factor
+    #     "decoder_channels": 768,                  # Channels used in decoder
+    #     "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
+    #     "num_classes": 19,                        # Replace with your target number of classes
+    #     "drop_prob": 0.1,                          # Stochastic depth drop probability
+    #     "threshold": -6.0,                      # Threshold for the score
+    # }
+
     segformer_b5_config = {
         "in_channels": 3,
         "widths": [64, 128, 320, 512],             # Feature map widths for each stage
@@ -166,7 +182,6 @@ def main(args):
         "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
         "num_classes": 19,                        # Replace with your target number of classes
         "drop_prob": 0.1,                          # Stochastic depth drop probability
-        "threshold": -6.0,                      # Threshold for the score
     }
 
     model = SegFormer(**segformer_b5_config).to(device)
