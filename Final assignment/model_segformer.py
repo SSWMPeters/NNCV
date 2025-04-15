@@ -239,7 +239,7 @@ class SegFormer(nn.Module):
         overlap_sizes: List[int] = [4, 2, 2, 2],
         reduction_ratios: List[int] = [8, 4, 2, 1],
         mlp_expansions: List[int] = [4, 4, 4, 4],
-        decoder_channels: int = 768,
+        decoder_channels: int = 256,
         scale_factors: List[int] = [8, 4, 2, 1],
         num_classes: int = 19,
         drop_prob: float = 0.1,

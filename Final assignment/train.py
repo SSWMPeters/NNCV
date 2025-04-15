@@ -162,7 +162,7 @@ def main(args):
         "overlap_sizes": [4, 2, 2, 2],             # Overlap stride sizes
         "reduction_ratios": [8, 4, 2, 1],          # Attention spatial reduction per stage
         "mlp_expansions": [4, 4, 4, 4],            # MLP hidden expansion factor
-        "decoder_channels": 768,                  # Channels used in decoder
+        "decoder_channels": 256,                  # Channels used in decoder
         "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
         "num_classes": 19,                        # Replace with your target number of classes
         "drop_prob": 0.1,                          # Stochastic depth drop probability
