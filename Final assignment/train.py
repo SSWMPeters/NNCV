@@ -228,7 +228,7 @@ def main(args):
             loss = loss_dice
 
             train_energy.append(torch.mean(score))
-            train_flag.append(1 - torch.mean(flag))
+            train_flag.append(1 - (torch.sum(flag)/len(flag)))
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
             optimizer.step()
@@ -265,7 +265,7 @@ def main(args):
                 loss_CE = criterion(outputs, labels)
                 losses_CE.append(loss_CE.item())
 
-                valid_energy.append(torch.mean(score))
+                valid_energy.append(1 - (torch.sum(score)/len(score)))
 
                 loss_dice = dice_loss(outputs, labels)  # Calculate the Dice score
                 losses_dice.append(loss_dice.item())
