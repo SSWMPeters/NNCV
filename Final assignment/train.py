@@ -16,7 +16,6 @@ import os
 from argparse import ArgumentParser
 import numpy as np
 from math import sqrt
-from typing import Union
 
 import wandb
 import torch
@@ -344,12 +343,10 @@ def main(args):
     wandb.finish()
 
 
-def confidence_upper_bound(sample: Union[np.ndarray, torch.Tensor], confidence_level=0.95):
-    if isinstance(sample, torch.Tensor):
-        sample = sample.detach().cpu().numpy()  # <-- FIX here
+def confidence_upper_bound(sample, confidence_level=0.95):  # <-- FIX here
 
-    mean = np.mean(sample)
-    std_error = np.std(sample, ddof=1) / sqrt(len(sample))
+    mean = torch.mean(sample)
+    std_error = torch.std(sample) / (len(sample)**0.5)
 
     # z-score for 95% confidence (assuming approx. normality or large enough sample size)
     z = 1.96  # for 95% CI
