@@ -14,6 +14,7 @@ Feel free to customize the script as needed for your use case.
 """
 import os
 from argparse import ArgumentParser
+import numpy as np
 
 import wandb
 import torch
@@ -138,13 +139,15 @@ def main(args):
         train_dataset, 
         batch_size=args.batch_size, 
         shuffle=True,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        pin_memory=True
     )
     valid_dataloader = DataLoader(
         valid_dataset, 
         batch_size=args.batch_size, 
         shuffle=False,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        pin_memory=True
     )
     
     # Load pretrained ViT model
@@ -242,8 +245,9 @@ def main(args):
                 "learning_rate": optimizer.param_groups[0]['lr'],
                 "epoch": epoch + 1,
             }, step=epoch * len(train_dataloader) + i)
-        train_energy_avg = sum(train_energy) / len(train_energy)
-        print(f"Training Energy: {train_energy_avg:.4f}")
+        train_energy_95th = confidence_upper_bound(train_energy)
+        print(f"Train Energy conf inv 95%: {train_energy_95th:.4f}")
+        
         train_flag_avg = sum(train_flag) / len(train_flag)
         print(f"Training Flag: {train_flag_avg:.4f}")
         # Validation
@@ -301,8 +305,8 @@ def main(args):
             valid_flag_avg = sum(valid_flag) / len(valid_flag)
             print(f"Validation Flag: {valid_flag_avg:.4f}")
 
-            valid_energy_avg = sum(valid_energy) / len(valid_energy)
-            print(f"Validation Energy: {valid_energy_avg:.4f}")
+            valid_energy_95th = confidence_upper_bound(valid_energy)
+            print(f"Val Energy conf inv 95%: {valid_energy_95th:.4f}")
 
             valid_loss_CE = sum(losses_CE) / len(losses_CE)
             valid_loss_dice = sum(losses_dice) / len(losses_dice)
@@ -336,6 +340,21 @@ def main(args):
         )
     )
     wandb.finish()
+
+def confidence_upper_bound(sample, confidence=0.95):
+    sample = np.array(sample)
+    n = len(sample)
+    mean = np.mean(sample)
+    std = np.std(sample, ddof=1)  # sample std dev with Bessel's correction
+
+    # Z-score for 95% confidence
+    z = 1.96 if confidence == 0.95 else None  # You can add more z-scores if needed
+    if z is None:
+        raise ValueError("Only 95% confidence supported unless z-score is provided.")
+
+    margin = z * (std / np.sqrt(n))
+    upper_bound = mean + margin
+    return upper_bound
 
 
 if __name__ == "__main__":
