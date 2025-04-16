@@ -34,10 +34,7 @@ from torchvision.transforms.v2 import (
     ConvertImageDtype
 )
 from torchvision import models
-from model_segformer_ood import SegFormerWithEnergy
-from model_vit import Model
-
-from model_segformer import SegFormer
+from model_segformer_ood import Model
 
 from MLCDiceLoss import MultiClassDiceLoss
 
@@ -170,7 +167,7 @@ def main(args):
     }
 
 
-    model = SegFormerWithEnergy(**segformer_b5_config).to(device)
+    model = Model(**segformer_b5_config).to(device)
 
     # model = SegFormer(
     #     in_channels=3,
