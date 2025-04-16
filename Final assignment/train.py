@@ -166,7 +166,7 @@ def main(args):
         "scale_factors": [8, 4, 2, 1],             # For upsampling in decoder (reverse of resolution drops)
         "num_classes": 19,                        # Replace with your target number of classes
         "drop_prob": 0.1,                          # Stochastic depth drop probability
-        "threshold": -3.0,                      # Threshold for the score
+        "threshold": -12.0,                      # Threshold for the score
     }
 
 
@@ -216,6 +216,7 @@ def main(args):
         # Training
         model.train()
         train_energy = []
+        train_flag = []
         for i, (images, labels) in enumerate(train_dataloader):
 
             labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -227,9 +228,10 @@ def main(args):
             outputs, flag, score = model(images)
             loss_dice = dice_loss(outputs, labels)
             loss_CE = criterion(outputs, labels)
-            loss = loss_CE + loss_dice
+            loss = loss_dice
 
             train_energy.append(torch.mean(score))
+            train_flag.append(1 - torch.mean(flag))
             # dice_score = dice_loss(outputs, labels)  # Calculate the Dice loss
             loss.backward()
             optimizer.step()
@@ -245,6 +247,8 @@ def main(args):
             }, step=epoch * len(train_dataloader) + i)
         train_energy_avg = sum(train_energy) / len(train_energy)
         print(f"Training Energy: {train_energy_avg:.4f}")
+        train_flag_avg = sum(train_flag) / len(train_flag)
+        print(f"Training Flag: {train_flag_avg:.4f}")
         # Validation
         model.eval()
         with torch.no_grad():
@@ -252,6 +256,7 @@ def main(args):
             losses_CE = []
             losses_dice = []
             valid_energy = []
+            valid_flag = []
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -268,8 +273,10 @@ def main(args):
                 loss_dice = dice_loss(outputs, labels)  # Calculate the Dice score
                 losses_dice.append(loss_dice.item())
 
-                loss = loss_CE + loss_dice
+                loss = loss_dice
                 losses.append(loss.item())
+
+                valid_flag.append(torch.mean(flag))
 
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -293,6 +300,9 @@ def main(args):
             
             valid_loss = sum(losses) / len(losses)
             scheduler.step(valid_loss)
+            
+            valid_flag_avg = sum(valid_flag) / len(valid_flag)
+            print(f"Validation Flag: {valid_flag_avg:.4f}")
 
             valid_energy_avg = sum(valid_energy) / len(valid_energy)
             print(f"Validation Energy: {valid_energy_avg:.4f}")
