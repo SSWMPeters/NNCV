@@ -344,7 +344,7 @@ def main(args):
 
 
 def confidence_upper_bound(sample, confidence_level=0.95):  # <-- FIX here
-
+    sample = torch.tensor(sample, dtype=torch.float32)
     mean = torch.mean(sample)
     std_error = torch.std(sample) / (len(sample)**0.5)
 
