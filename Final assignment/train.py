@@ -15,6 +15,8 @@ Feel free to customize the script as needed for your use case.
 import os
 from argparse import ArgumentParser
 import numpy as np
+from math import sqrt
+from typing import Union
 
 import wandb
 import torch
@@ -341,20 +343,19 @@ def main(args):
     )
     wandb.finish()
 
-def confidence_upper_bound(sample, confidence=0.95):
-    sample = np.array(sample)
-    n = len(sample)
+
+def confidence_upper_bound(sample: Union[np.ndarray, torch.Tensor], confidence_level=0.95):
+    if isinstance(sample, torch.Tensor):
+        sample = sample.detach().cpu().numpy()  # <-- FIX here
+
     mean = np.mean(sample)
-    std = np.std(sample, ddof=1)  # sample std dev with Bessel's correction
+    std_error = np.std(sample, ddof=1) / sqrt(len(sample))
 
-    # Z-score for 95% confidence
-    z = 1.96 if confidence == 0.95 else None  # You can add more z-scores if needed
-    if z is None:
-        raise ValueError("Only 95% confidence supported unless z-score is provided.")
+    # z-score for 95% confidence (assuming approx. normality or large enough sample size)
+    z = 1.96  # for 95% CI
 
-    margin = z * (std / np.sqrt(n))
-    upper_bound = mean + margin
-    return upper_bound
+    return mean + z * std_error
+
 
 
 if __name__ == "__main__":
