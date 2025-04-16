@@ -303,5 +303,5 @@ class Model(nn.Module):
         logits = self.segformer(x)
         energy_map = -torch.logsumexp(logits, dim=1)  # [B, H, W]
         avg_energy = energy_map.mean(dim=(1, 2))  # [B]
-        ood_flags = -avg_energy > self.threshold  # less negative = more likely OOD
+        ood_flags = -avg_energy < self.threshold  # less negative = more likely OOD
         return logits, ood_flags, avg_energy
